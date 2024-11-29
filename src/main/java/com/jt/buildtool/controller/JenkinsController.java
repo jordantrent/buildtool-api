@@ -19,13 +19,13 @@ public class JenkinsController {
         this.jenkinsService = jenkinsService;
     }
 
-    @GetMapping("/jobs/names")
+    @PostMapping("/jobs/names")
     public List<String> getJobNames(
             @RequestBody JenkinsConfig jenkinsConfig) {
         return jenkinsService.getJobNames(jenkinsConfig);
     }
 
-    @GetMapping("/jobs/{jobName}")
+    @PostMapping("/jobs/{jobName}")
     public ResponseEntity<PipelineDetails> getPipelineDetails(
             @PathVariable String jobName,
             @RequestBody JenkinsConfig jenkinsConfig) {
@@ -34,7 +34,7 @@ public class JenkinsController {
         return ResponseEntity.ok(jobDetails);
     }
 
-    @GetMapping("/jobs/{jobName}/{buildId}")
+    @PostMapping("/jobs/{jobName}/{buildId}")
     public ResponseEntity<BuildDetails> getBuildDetails(
             @PathVariable String jobName,
             @PathVariable int buildId,
@@ -44,7 +44,7 @@ public class JenkinsController {
         return ResponseEntity.ok(buildDetails);
     }
 
-    @GetMapping("/jobs/{jobName}/{buildId}/consoleOutput")
+    @PostMapping("/jobs/{jobName}/{buildId}/consoleOutput")
     public ResponseEntity<String> getConsoleOutput(
             @PathVariable String jobName,
             @PathVariable int buildId,
