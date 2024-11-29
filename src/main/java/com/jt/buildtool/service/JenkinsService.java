@@ -1,13 +1,12 @@
 package com.jt.buildtool.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jt.buildtool.config.JenkinsConfig;
 import com.jt.buildtool.model.BuildDetails;
 import com.jt.buildtool.model.PipelineDetails;
-import org.springframework.stereotype.Service;
 import com.jt.buildtool.exception.JenkinsServiceException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.net.URI;
@@ -15,125 +14,87 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Base64;
+import java.util.List;
 
 @Service
 public class JenkinsService {
 
-    private final JenkinsConfig jenkinsConfig;
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
 
-    public JenkinsService(JenkinsConfig jenkinsConfig, ObjectMapper objectMapper) {
-        this.jenkinsConfig = jenkinsConfig;
+    public JenkinsService(ObjectMapper objectMapper) {
         this.httpClient = HttpClient.newBuilder().build();
         this.objectMapper = objectMapper;
     }
 
-    public PipelineDetails getPipelineDetails(String jobName) {
+    public PipelineDetails getPipelineDetails(String jobName, JenkinsConfig jenkinsConfig) {
         try {
-            String jobJson = fetchPipelineDetailsFromJenkins(jobName);
+            String jobJson = fetchPipelineDetailsFromJenkins(jobName, jenkinsConfig);
             return objectMapper.readValue(jobJson, PipelineDetails.class);
-        } catch (JsonProcessingException e) {
-            throw new JenkinsServiceException("Error processing JSON for job: " + jobName, e);
+        } catch (Exception e) {
+            throw new JenkinsServiceException("Error fetching pipeline details for job: " + jobName, e);
         }
     }
 
-    private String fetchPipelineDetailsFromJenkins(String jobName) {
+    private String fetchPipelineDetailsFromJenkins(String jobName, JenkinsConfig jenkinsConfig) throws IOException, InterruptedException {
+        URI uri = URI.create(jenkinsConfig.getJenkinsUrl() + "/job/" + jobName + "/api/json?depth=1");
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(uri)
+                .header("Authorization", getBasicAuthHeader(jenkinsConfig))
+                .GET()
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() != 200) {
+            throw new JenkinsServiceException("Failed to fetch job details. HTTP Status: " + response.statusCode());
+        }
+
+        return response.body();
+    }
+
+    public BuildDetails getBuildDetails(String jobName, int buildId, JenkinsConfig jenkinsConfig) {
         try {
-
-            URI uri = URI.create(jenkinsConfig.getJenkinsUrl() + "/job/" + jobName + "/api/json?depth=1");
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(uri)
-                    .header("Authorization", getBasicAuthHeader())
-                    .GET()
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-            if (response.statusCode() != 200) {
-                throw new JenkinsServiceException("Failed to fetch job details. HTTP Status: " + response.statusCode());
-            }
-
-            return response.body();
-        } catch (IOException e) {
-            throw new JenkinsServiceException("Error fetching pipeline details from Jenkins for job: " + jobName, e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new JenkinsServiceException("Request was interrupted while fetching pipeline details for job: " + jobName, e);
+            String jobJson = fetchBuildDetailsFromJenkins(jobName, buildId, jenkinsConfig);
+            return objectMapper.readValue(jobJson, BuildDetails.class);
+        } catch (Exception e) {
+            throw new JenkinsServiceException("Error fetching build details for job: " + jobName, e);
         }
     }
 
-    public BuildDetails getBuildDetails(String jobName, int id) {
+    private String fetchBuildDetailsFromJenkins(String jobName, int buildId, JenkinsConfig jenkinsConfig) throws IOException, InterruptedException {
+        URI uri = URI.create(jenkinsConfig.getJenkinsUrl() + "/job/" + jobName + "/" + buildId + "/api/json");
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(uri)
+                .header("Authorization", getBasicAuthHeader(jenkinsConfig))
+                .GET()
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() != 200) {
+            throw new JenkinsServiceException("Failed to fetch build details. HTTP Status: " + response.statusCode());
+        }
+
+        return response.body();
+    }
+
+    public String getConsoleOutput(String jobName, int buildNumber, JenkinsConfig jenkinsConfig) {
         try {
-            String jobJson = fetchBuildDetailsFromJenkins(jobName, id);
-
-            JsonNode rootNode = objectMapper.readTree(jobJson);
-
-            JsonNode buildDataNode = null;
-            for (JsonNode action : rootNode.path("actions")) {
-                if (action.has("_class") && action.get("_class").asText().equals("hudson.plugins.git.util.BuildData")) {
-                    buildDataNode = action.path("remoteUrls");
-                    break;
-                }
-            }
-
-            String gitHubRepoUrl = buildDataNode != null && buildDataNode.isArray() ? buildDataNode.get(0).asText() : null;
-
-            BuildDetails buildDetails = objectMapper.readValue(jobJson, BuildDetails.class);
-
-            buildDetails.setGitHubRepoUrl(gitHubRepoUrl);
-
-            return buildDetails;
-
-        } catch (JsonProcessingException e) {
-            throw new JenkinsServiceException("Error processing JSON for job: " + jobName, e);
+            return fetchConsoleOutputFromJenkins(jobName, buildNumber, jenkinsConfig);
+        } catch (IOException | InterruptedException e) {
+            throw new JenkinsServiceException("Error fetching console output for job: " + jobName, e);
         }
     }
 
-    private String fetchBuildDetailsFromJenkins(String jobName, int id) {
-        try {
-
-            URI uri = URI.create(jenkinsConfig.getJenkinsUrl() + "/job/" + jobName + "/" + id + "/api/json");
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(uri)
-                    .header("Authorization", getBasicAuthHeader())
-                    .GET()
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-            if (response.statusCode() != 200) {
-                throw new JenkinsServiceException("Failed to fetch build details. HTTP Status: " + response.statusCode());
-            }
-
-            return response.body();
-        } catch (IOException e) {
-            throw new JenkinsServiceException("Error fetching build details from Jenkins for job: " + jobName, e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new JenkinsServiceException("Request was interrupted while fetching build details for job: " + jobName, e);
-        }
-    }
-
-    public String getConsoleOutput(String jobName, int buildNumber) {
-        try {
-            return fetchConsoleOutputFromJenkins(jobName, buildNumber);
-        } catch (IOException e) {
-            throw new JenkinsServiceException("Error fetching console output from Jenkins for job: " + jobName, e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new JenkinsServiceException("Request was interrupted while fetching console output details for job: " + jobName, e);
-        }
-    }
-
-    private String fetchConsoleOutputFromJenkins(String jobName, int buildNumber) throws IOException, InterruptedException {
+    private String fetchConsoleOutputFromJenkins(String jobName, int buildNumber, JenkinsConfig jenkinsConfig) throws IOException, InterruptedException {
         URI uri = URI.create(jenkinsConfig.getJenkinsUrl() + "/job/" + jobName + "/" + buildNumber + "/consoleText");
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(uri)
-                .header("Authorization", getBasicAuthHeader())
+                .header("Authorization", getBasicAuthHeader(jenkinsConfig))
                 .GET()
                 .build();
 
@@ -146,7 +107,36 @@ public class JenkinsService {
         return response.body();
     }
 
-    private String getBasicAuthHeader() {
+    public List<String> getJobNames(JenkinsConfig jenkinsConfig) {
+        try {
+            String jobsJson = fetchJobNamesFromJenkins(jenkinsConfig);
+            JsonNode rootNode = objectMapper.readTree(jobsJson);
+            JsonNode jobsNode = rootNode.path("jobs");
+            return jobsNode.isArray() ? jobsNode.findValuesAsText("name") : List.of();
+        } catch (IOException | InterruptedException e) {
+            throw new JenkinsServiceException("Error fetching job names", e);
+        }
+    }
+
+    private String fetchJobNamesFromJenkins(JenkinsConfig jenkinsConfig) throws IOException, InterruptedException {
+        URI uri = URI.create(jenkinsConfig.getJenkinsUrl() + "/api/json?tree=jobs[name]");
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(uri)
+                .header("Authorization", getBasicAuthHeader(jenkinsConfig))
+                .GET()
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() != 200) {
+            throw new JenkinsServiceException("Failed to fetch job names. HTTP Status: " + response.statusCode());
+        }
+
+        return response.body();
+    }
+
+    private String getBasicAuthHeader(JenkinsConfig jenkinsConfig) {
         String credentials = jenkinsConfig.getJenkinsUsername() + ":" + jenkinsConfig.getJenkinsApiToken();
         return "Basic " + Base64.getEncoder().encodeToString(credentials.getBytes());
     }
