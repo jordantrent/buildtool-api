@@ -57,10 +57,10 @@ public class JenkinsService {
 
             return response.body();
         } catch (IOException e) {
-            throw new JenkinsServiceException("Error fetching job details from Jenkins for job: " + jobName, e);
+            throw new JenkinsServiceException("Error fetching pipeline details from Jenkins for job: " + jobName, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new JenkinsServiceException("Request was interrupted while fetching job details for job: " + jobName, e);
+            throw new JenkinsServiceException("Request was interrupted while fetching pipeline details for job: " + jobName, e);
         }
     }
 
@@ -105,16 +105,45 @@ public class JenkinsService {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
-                throw new JenkinsServiceException("Failed to fetch job details. HTTP Status: " + response.statusCode());
+                throw new JenkinsServiceException("Failed to fetch build details. HTTP Status: " + response.statusCode());
             }
 
             return response.body();
         } catch (IOException e) {
-            throw new JenkinsServiceException("Error fetching job details from Jenkins for job: " + jobName, e);
+            throw new JenkinsServiceException("Error fetching build details from Jenkins for job: " + jobName, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new JenkinsServiceException("Request was interrupted while fetching job details for job: " + jobName, e);
+            throw new JenkinsServiceException("Request was interrupted while fetching build details for job: " + jobName, e);
         }
+    }
+
+    public String getConsoleOutput(String jobName, int buildNumber) {
+        try {
+            return fetchConsoleOutputFromJenkins(jobName, buildNumber);
+        } catch (IOException e) {
+            throw new JenkinsServiceException("Error fetching console output from Jenkins for job: " + jobName, e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new JenkinsServiceException("Request was interrupted while fetching console output details for job: " + jobName, e);
+        }
+    }
+
+    private String fetchConsoleOutputFromJenkins(String jobName, int buildNumber) throws IOException, InterruptedException {
+        URI uri = URI.create(jenkinsConfig.getJenkinsUrl() + "/job/" + jobName + "/" + buildNumber + "/consoleText");
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(uri)
+                .header("Authorization", getBasicAuthHeader())
+                .GET()
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() != 200) {
+            throw new JenkinsServiceException("Failed to fetch console output. HTTP Status: " + response.statusCode());
+        }
+
+        return response.body();
     }
 
     private String getBasicAuthHeader() {

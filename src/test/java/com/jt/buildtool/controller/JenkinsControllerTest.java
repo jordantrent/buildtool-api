@@ -10,6 +10,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.when;
 
 class JenkinsControllerTest {
@@ -37,7 +38,7 @@ class JenkinsControllerTest {
 
         PipelineDetails response = jenkinsController.getPipelineDetails(jobName).getBody();
 
-        assert response != null;
+        assertNotNull(response);
         assertEquals(jobName, response.getName());
         assertEquals("https://example.com/job/exampleJob", response.getUrl());
     }
@@ -55,8 +56,23 @@ class JenkinsControllerTest {
 
         BuildDetails response = jenkinsController.getBuildDetails(jobName, buildNumber).getBody();
 
-        assert response != null;
+        assertNotNull(response);
         assertEquals(jobName, response.getDisplayName());
         assertEquals("https://example.com/job/exampleBuild", response.getUrl());
+    }
+
+    @Test
+    void testGetConsoleOutput() {
+
+        String jobName = "exampleBuild";
+        int buildNumber = 1;
+        String expectedOutput = "Build started\\nStep 1: Success\\nStep 2: Failed\\nBuild finished";
+
+        when(jenkinsService.getConsoleOutput(jobName, buildNumber)).thenReturn(expectedOutput);
+
+        String response = jenkinsController.getConsoleOutput(jobName, buildNumber);
+
+        assertNotNull(response);
+        assertEquals(expectedOutput, response);
     }
 }

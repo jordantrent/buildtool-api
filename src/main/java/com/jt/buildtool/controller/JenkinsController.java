@@ -27,4 +27,10 @@ public class JenkinsController {
         BuildDetails buildDetails = jenkinsService.getBuildDetails(jobName, buildId);
         return ResponseEntity.ok(buildDetails);
     }
+
+    @GetMapping("/jobs/{jobName}/{buildId}/consoleOutput")
+    public String getConsoleOutput(@PathVariable String jobName, @PathVariable int buildId) {
+        return jenkinsService.getConsoleOutput(jobName, buildId);
+    }
+
 }
