@@ -9,6 +9,7 @@ The backend is built with **Spring Boot** and provides APIs for displaying pipel
 ## Features
 
 - **RESTful APIs**: Exposes endpoints pipeline, build details and console output.
+- **Jenkins Details**: Simply input your Jenkins Url and Credentials.
 
 ---
 
@@ -33,13 +34,7 @@ The backend is built with **Spring Boot** and provides APIs for displaying pipel
    git clone https://github.com/jordantrent/buildtool-api.git
    cd buildtool-api
 
-2. Configure your Jenkins details in application.properties:
-   ```bash
-   jenkins.url=${JENKINS_URL}
-   jenkins.username=${JENKINS_USERNAME}
-   jenkins.apiToken=${JENKINS_APITOKEN}
-
-3. Run the application:
+2. Run the application:
    ```bash
    ./mvnw spring-boot:run
 
