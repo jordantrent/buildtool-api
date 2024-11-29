@@ -30,7 +30,7 @@ The backend is built with **Spring Boot** and provides APIs for displaying pipel
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-org/buildtool-api.git
+   git clone https://github.com/jordantrent/buildtool-api.git
    cd buildtool-api
 
 2. Configure your Jenkins details in application.properties:
