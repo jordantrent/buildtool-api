@@ -1,8 +1,8 @@
 package com.jt.buildtool.controller;
 
 import com.jt.buildtool.config.JenkinsConfig;
-import com.jt.buildtool.model.BuildDetails;
-import com.jt.buildtool.model.PipelineDetails;
+import com.jt.buildtool.model.Build;
+import com.jt.buildtool.model.Job;
 import com.jt.buildtool.service.JenkinsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -10,6 +10,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -28,53 +29,29 @@ class JenkinsControllerTest {
     void setUp() {
         MockitoAnnotations.openMocks(this);
     }
-
-    @Test
-    void testGetPipelineDetails() {
-
-        String jobName = "exampleJob";
-
-        JenkinsConfig jenkinsConfig = new JenkinsConfig();
-        jenkinsConfig.setJenkinsUrl("https://example.com/job/exampleJob");
-        jenkinsConfig.setJenkinsUsername("testuser");
-        jenkinsConfig.setJenkinsApiToken("testpass");
-
-        PipelineDetails pipelineDetails = new PipelineDetails();
-        pipelineDetails.setName(jobName);
-        pipelineDetails.setUrl("https://example.com/job/exampleJob");
-
-        when(jenkinsService.getPipelineDetails(jobName, jenkinsConfig)).thenReturn(pipelineDetails);
-
-        PipelineDetails response = jenkinsController.getPipelineDetails(jobName,
-                jenkinsConfig).getBody();
-
-        assertNotNull(response);
-        assertEquals(jobName, response.getName());
-        assertEquals("https://example.com/job/exampleJob", response.getUrl());
-    }
-
+    
     @Test
     void testGetBuildDetails() {
 
-        String jobName = "exampleBuild";
+        String jobName = "exampleJob";
         int buildNumber = 1;
 
         JenkinsConfig jenkinsConfig = new JenkinsConfig();
-        jenkinsConfig.setJenkinsUrl("https://example.com/job/exampleJob");
+        jenkinsConfig.setJenkinsUrl("http://localhost:8080");
         jenkinsConfig.setJenkinsUsername("testuser");
         jenkinsConfig.setJenkinsApiToken("testpass");
 
-        BuildDetails buildDetails = new BuildDetails();
-        buildDetails.setDisplayName(jobName);
-        buildDetails.setUrl("https://example.com/job/exampleBuild");
+        Build exampleBuild = new Build();
+        exampleBuild.setId(buildNumber);
+        exampleBuild.setResult("BUILD_SUCCESS");
 
-        when(jenkinsService.getBuildDetails(jobName, buildNumber, jenkinsConfig)).thenReturn(buildDetails);
+        when(jenkinsService.getBuildDetails(jobName, buildNumber, jenkinsConfig)).thenReturn(exampleBuild);
 
-        BuildDetails response = jenkinsController.getBuildDetails(jobName, buildNumber, jenkinsConfig).getBody();
+        Build response = jenkinsController.getBuildDetails(jobName, buildNumber, jenkinsConfig).getBody();
 
         assertNotNull(response);
-        assertEquals(jobName, response.getDisplayName());
-        assertEquals("https://example.com/job/exampleBuild", response.getUrl());
+        assertEquals(buildNumber, response.getId());
+        assertEquals("BUILD_SUCCESS", response.getResult());
     }
 
     @Test
@@ -84,7 +61,7 @@ class JenkinsControllerTest {
         int buildNumber = 1;
 
         JenkinsConfig jenkinsConfig = new JenkinsConfig();
-        jenkinsConfig.setJenkinsUrl("https://example.com/job/exampleJob");
+        jenkinsConfig.setJenkinsUrl("http://localhost:8080");
         jenkinsConfig.setJenkinsUsername("testuser");
         jenkinsConfig.setJenkinsApiToken("testpass");
 
@@ -99,20 +76,60 @@ class JenkinsControllerTest {
     }
 
     @Test
-    void testGetJobNames() {
+    void testGetJobs() {
 
         JenkinsConfig jenkinsConfig = new JenkinsConfig();
-        jenkinsConfig.setJenkinsUrl("https://example.com/job/exampleJob");
+        jenkinsConfig.setJenkinsUrl("http://localhost:8080");
         jenkinsConfig.setJenkinsUsername("testuser");
         jenkinsConfig.setJenkinsApiToken("testpass");
 
-        List<String> expectedOutput = List.of("Job1", "Job2", "Job3");
+        Job exampleJob = new Job();
+        exampleJob.setName("exampleJob1");
+        exampleJob.setUrl("https://example.com/job/exampleJob1");
 
-        when(jenkinsService.getJobNames(jenkinsConfig)).thenReturn(expectedOutput);
+        Job exampleJob2 = new Job();
+        exampleJob2.setName("exampleJob2");
+        exampleJob2.setUrl("https://example.com/job/exampleJob2");
 
-        List<String> response = jenkinsController.getJobNames(jenkinsConfig);
+        List<Job> exampleOutput = new ArrayList<>();
+        exampleOutput.add(exampleJob);
+        exampleOutput.add(exampleJob2);
+
+        when(jenkinsService.getJobs(jenkinsConfig)).thenReturn(exampleOutput);
+
+        List<Job> response = jenkinsController.getJobs(jenkinsConfig);
 
         assertNotNull(response);
-        assertEquals(expectedOutput, response);
+        assertEquals(exampleOutput, response);
+    }
+
+    @Test
+    void testGetBuildsForJob() {
+
+        String jobName = "exampleJob";
+
+        JenkinsConfig jenkinsConfig = new JenkinsConfig();
+        jenkinsConfig.setJenkinsUrl("http://localhost:8080");
+        jenkinsConfig.setJenkinsUsername("testuser");
+        jenkinsConfig.setJenkinsApiToken("testpass");
+
+        Build successfulBuild = new Build();
+        successfulBuild.setId(1);
+        successfulBuild.setResult("BUILD_SUCCESS");
+
+        Build failedBuild = new Build();
+        failedBuild.setId(2);
+        failedBuild.setResult("BUILD_FAIL");
+
+        List<Build> exampleOutput = new ArrayList<>();
+        exampleOutput.add(successfulBuild);
+        exampleOutput.add(failedBuild);
+
+        when(jenkinsService.getBuildsForJob(jobName, jenkinsConfig)).thenReturn(exampleOutput);
+
+        List<Build> response = jenkinsController.getBuildsForJob(jobName, jenkinsConfig);
+
+        assertNotNull(response);
+        assertEquals(exampleOutput, response);
     }
 }

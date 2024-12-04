@@ -1,8 +1,8 @@
 package com.jt.buildtool.controller;
 
 import com.jt.buildtool.config.JenkinsConfig;
-import com.jt.buildtool.model.BuildDetails;
-import com.jt.buildtool.model.PipelineDetails;
+import com.jt.buildtool.model.Build;
+import com.jt.buildtool.model.Job;
 import com.jt.buildtool.service.JenkinsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,28 +20,26 @@ public class JenkinsController {
     }
 
     @PostMapping("/jobs/names")
-    public List<String> getJobNames(
+    public List<Job> getJobs(
             @RequestBody JenkinsConfig jenkinsConfig) {
-        return jenkinsService.getJobNames(jenkinsConfig);
+        return jenkinsService.getJobs(jenkinsConfig);
     }
 
-    @PostMapping("/jobs/{jobName}")
-    public ResponseEntity<PipelineDetails> getPipelineDetails(
+    @PostMapping("/jobs/builds/{jobName}")
+    public List<Build> getBuildsForJob(
             @PathVariable String jobName,
             @RequestBody JenkinsConfig jenkinsConfig) {
-
-        PipelineDetails jobDetails = jenkinsService.getPipelineDetails(jobName, jenkinsConfig);
-        return ResponseEntity.ok(jobDetails);
+        return jenkinsService.getBuildsForJob(jobName, jenkinsConfig);
     }
 
     @PostMapping("/jobs/{jobName}/{buildId}")
-    public ResponseEntity<BuildDetails> getBuildDetails(
+    public ResponseEntity<Build> getBuildDetails(
             @PathVariable String jobName,
             @PathVariable int buildId,
             @RequestBody JenkinsConfig jenkinsConfig) {
 
-        BuildDetails buildDetails = jenkinsService.getBuildDetails(jobName, buildId, jenkinsConfig);
-        return ResponseEntity.ok(buildDetails);
+        Build build = jenkinsService.getBuildDetails(jobName, buildId, jenkinsConfig);
+        return ResponseEntity.ok(build);
     }
 
     @PostMapping("/jobs/{jobName}/{buildId}/consoleOutput")
